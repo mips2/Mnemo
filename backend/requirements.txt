@@ -1,11 +1,14 @@
 fastapi
-uvicorn
+uvicorn[standard]
 transformers
 torch
 faiss-cpu
 sentence-transformers
 pydantic
+sqlmodel
+python-jose[cryptography]
+passlib[bcrypt]
 sqlalchemy
-asyncpg
-python-jose[cryptography]  # For JWT authentication
-passlib[bcrypt]  # For password hashing
+alembic
+fastapi-utils
+slowapi

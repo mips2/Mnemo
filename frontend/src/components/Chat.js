@@ -1,85 +1,80 @@
 // frontend/src/components/Chat.js
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
+import api from '../api';
+import { useNavigate } from 'react-router-dom';
 
 function Chat() {
-  const [query, setQuery] = useState('');
-  const [response, setResponse] = useState('');
-  const [feedback, setFeedback] = useState('');
+    const [query, setQuery] = useState('');
+    const [response, setResponse] = useState('');
+    const [feedback, setFeedback] = useState('');
+    const navigate = useNavigate();
 
-  const token = localStorage.getItem('token');
-
-  useEffect(() => {
-    if (!token) {
-      window.location.href = '/login';
+    const handleGenerate = async () => {
+        if (!query) return;
+        try {
+            const res = await api.post('/generate', { user_input: query, model_response: "" }); // Adjust based on backend
+            setResponse(res.data.response);
+        } catch (error) {
+            if (error.response && error.response.status === 401) {
+                navigate('/login');
+            } else {
+                alert("Error: " + (error.response.data.detail || "An error occurred."));
+            }
+        }
     }
-  }, [token]);
 
-  const handleGenerate = async () => {
-    try {
-      const res = await axios.post(
-        'http://localhost:8000/generate',
-        { text: query },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setResponse(res.data.response);
-    } catch (error) {
-      alert('Error generating response.');
+    const handleFeedback = async () => {
+        if (!feedback) return;
+        try {
+            await api.post('/feedback', {
+                user_input: query,
+                model_response: response,
+                corrected_response: feedback
+            });
+            alert("Feedback submitted successfully.");
+            setFeedback('');
+        } catch (error) {
+            alert("Feedback submission failed: " + (error.response.data.detail || "An error occurred."));
+        }
     }
-  };
 
-  const handleFeedback = async () => {
-    if (!response) {
-      alert('No response to provide feedback for.');
-      return;
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        navigate('/login');
     }
-    try {
-      await axios.post(
-        'http://localhost:8000/feedback',
-        {
-          user_input: query,
-          model_response: response,
-          feedback: feedback,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      alert('Feedback submitted. Thank you!');
-      setFeedback('');
-    } catch (error) {
-      alert('Error submitting feedback.');
-    }
-  };
 
-  return (
-    <div>
-      <h1>Dynamic Memory Transformer</h1>
-      <textarea
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Enter your query here..."
-      /><br/>
-      <button onClick={handleGenerate}>Generate Response</button>
-      
-      {response && (
+    return (
         <div>
-          <h2>Response:</h2>
-          <p>{response}</p>
-        </div>
-      )}
+            <h2>Chat Interface</h2>
+            <button onClick={handleLogout}>Logout</button>
+            <br /><br />
+            <textarea
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Enter your query here..."
+                rows="4"
+                cols="50"
+            /><br />
+            <button onClick={handleGenerate}>Generate Response</button>
 
-      {response && (
-        <div>
-          <h2>Provide Feedback</h2>
-          <textarea
-            value={feedback}
-            onChange={(e) => setFeedback(e.target.value)}
-            placeholder="Provide your feedback here..."
-          /><br/>
-          <button onClick={handleFeedback}>Submit Feedback</button>
+            <div>
+                <h3>Response:</h3>
+                <p>{response}</p>
+            </div>
+
+            <div>
+                <h3>Provide Feedback</h3>
+                <textarea
+                    value={feedback}
+                    onChange={e => setFeedback(e.target.value)}
+                    placeholder="Provide your corrected response here..."
+                    rows="4"
+                    cols="50"
+                /><br />
+                <button onClick={handleFeedback}>Submit Feedback</button>
+            </div>
         </div>
-      )}
-    </div>
-  );
+    );
 }
 
 export default Chat;
