@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
-import api from '../api';
 import { useNavigate, Link } from 'react-router-dom';
+import api from '../api';
 
 function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-
     const navigate = useNavigate();
 
     const handleLogin = async (e) => {
@@ -29,7 +28,7 @@ function Login() {
     }
 
     return (
-        <div>
+        <div style={{ maxWidth: '300px', margin: '0 auto', padding: '20px' }}>
             <h2>Login</h2>
             <form onSubmit={handleLogin}>
                 <input
@@ -38,15 +37,17 @@ function Login() {
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
-                /><br />
+                    style={{ width: '100%', marginBottom: '10px', padding: '5px' }}
+                />
                 <input
                     type="password"
                     placeholder="Password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
-                /><br />
-                <button type="submit" disabled={loading}>
+                    style={{ width: '100%', marginBottom: '10px', padding: '5px' }}
+                />
+                <button type="submit" disabled={loading} style={{ width: '100%', padding: '5px' }}>
                     {loading ? 'Logging in...' : 'Login'}
                 </button>
             </form>

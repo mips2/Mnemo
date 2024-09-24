@@ -1,11 +1,7 @@
 // frontend/src/api.js
 import axios from 'axios';
 
-const API_URL = "http://localhost:8000"; // Backend URL
-
-const getToken = () => {
-    return localStorage.getItem("token");
-}
+const API_URL = "http://localhost:8000";  // Update this to match your backend URL
 
 const api = axios.create({
     baseURL: API_URL,
@@ -13,7 +9,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
     config => {
-        const token = getToken();
+        const token = localStorage.getItem('token');
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
         }

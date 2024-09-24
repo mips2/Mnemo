@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 import torch
 
@@ -10,40 +11,20 @@ from .auth import (
     create_access_token,
     get_current_user,
     get_password_hash,
-    login_for_access_token
 )
 from .memory import MemoryStore
 from .ai_model import generate_response, fine_tune_model
 
-from pydantic import BaseModel
+app = FastAPI()
 
-from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-
-from datetime import timedelta
-
-# Initialize FastAPI app
-app = FastAPI(title="Dynamic Memory Transformer with Active Learning")
-
-# CORS Configuration
-origins = [
-    "http://localhost:3000",  # React frontend
-]
-
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["http://localhost:3000"],  # Add your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Initialize Rate Limiter
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Initialize database on startup
 @app.on_event("startup")
@@ -76,7 +57,15 @@ def register(user: UserCreate, session: Session = Depends(get_session)):
 # User Login
 @app.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
-    return await login_for_access_token(form_data, session)
+    user = authenticate_user(form_data.username, form_data.password, session)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
 
 # Generate Response Endpoint
 @app.post("/generate", summary="Generate response from the model")

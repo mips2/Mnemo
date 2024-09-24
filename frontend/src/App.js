@@ -10,7 +10,7 @@ function App() {
     return (
         <Router>
             <Routes>
-                <Route path="/" element={isAuthenticated ? <Chat /> : <Navigate to="/login" />} />
+                <Route path="/" element={isAuthenticated ? <Navigate to="/chat" /> : <Navigate to="/login" />} />
                 <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/chat" />} />
                 <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/chat" />} />
                 <Route path="/chat" element={isAuthenticated ? <Chat /> : <Navigate to="/login" />} />
