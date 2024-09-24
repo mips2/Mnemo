@@ -13,3 +13,4 @@ alembic
 fastapi-utils
 slowapi
 psycopg2-binary
+python-multipart

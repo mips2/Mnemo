@@ -1,4 +1,3 @@
-// frontend/src/components/Register.js
 import React, { useState } from 'react';
 import api from '../api';
 import { useNavigate, Link } from 'react-router-dom';
@@ -6,17 +5,23 @@ import { useNavigate, Link } from 'react-router-dom';
 function Register() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     const navigate = useNavigate();
 
     const handleRegister = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setError('');
         try {
             await api.post('/register', { email, password });
             alert("Registration successful. Please login.");
             navigate('/login');
         } catch (error) {
-            alert("Registration failed: " + (error.response?.data?.detail || "An error occurred"));
+            setError(error.response?.data?.detail || "Registration failed. Please try again.");
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -38,8 +43,11 @@ function Register() {
                     onChange={e => setPassword(e.target.value)}
                     required
                 /><br />
-                <button type="submit">Register</button>
+                <button type="submit" disabled={loading}>
+                    {loading ? 'Registering...' : 'Register'}
+                </button>
             </form>
+            {error && <p style={{ color: 'red' }}>{error}</p>}
             <p>Already have an account? <Link to="/login">Login</Link></p>
         </div>
     );
