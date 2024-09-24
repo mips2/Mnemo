@@ -1,4 +1,4 @@
-# active_learning.py
+# backend/active_learning.py
 import torch
 import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM, AdamW
