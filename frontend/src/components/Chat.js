@@ -11,14 +11,18 @@ function Chat() {
     const navigate = useNavigate();
 
     useEffect(() => {
+        console.log('Chat component mounted');
         fetchChatHistory();
     }, []);
 
     const fetchChatHistory = async () => {
         try {
+            console.log('Fetching chat history...');
             const res = await api.get('/chat-history');
+            console.log('Chat history:', res.data);
             setChatHistory(res.data);
         } catch (error) {
+            console.error('Error fetching chat history:', error);
             handleError(error);
         }
     };

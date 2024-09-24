@@ -14,13 +14,18 @@ function Login() {
         setLoading(true);
         setError('');
         try {
+            console.log('Attempting login...');
             const response = await api.post('/login', {
                 username: email,
                 password: password
             });
+            console.log('Login response:', response.data);
             localStorage.setItem('token', response.data.access_token);
+            console.log('Token stored in localStorage');
             navigate('/chat');
+            console.log('Navigated to /chat');
         } catch (error) {
+            console.error('Login error:', error);
             setError(error.response?.data?.detail || "Login failed. Please try again.");
         } finally {
             setLoading(false);

@@ -6,6 +6,7 @@ import Register from './components/Register';
 
 function App() {
     const isAuthenticated = !!localStorage.getItem('token');
+    console.log('Is authenticated:', isAuthenticated);
 
     return (
         <Router>

@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 import torch
+from pydantic import BaseModel
 
 from .database import create_db_and_tables, get_session
 from .models import User, Feedback, ChatHistory
@@ -15,7 +16,12 @@ from .auth import (
 from .memory import MemoryStore
 from .ai_model import generate_response, fine_tune_model
 
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
+app.state.limiter = limiter
 
 # CORS configuration
 app.add_middleware(
@@ -97,24 +103,17 @@ async def get_chat_history(current_user: User = Depends(get_current_user), sessi
 
 # Feedback Endpoint
 @app.post("/feedback")
-async def submit_feedback(request: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    user_input = request.get("user_input")
-    ai_response = request.get("ai_response")
-    corrected_response = request.get("corrected_response")
-    
-    if not all([user_input, ai_response, corrected_response]):
-        raise HTTPException(status_code=400, detail="All fields are required")
-    
+async def submit_feedback(feedback_data: FeedbackData, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     feedback = Feedback(
         user_id=current_user.id,
-        user_input=user_input,
-        ai_response=ai_response,
-        corrected_response=corrected_response
+        user_input=feedback_data.user_input,
+        ai_response=feedback_data.ai_response,
+        corrected_response=feedback_data.corrected_response
     )
     session.add(feedback)
     session.commit()
     
     # Fine-tune the model
-    loss = fine_tune_model(user_input, corrected_response)
+    loss = fine_tune_model(feedback_data.user_input, feedback_data.corrected_response)
     
     return {"message": "Feedback submitted and model fine-tuned successfully", "loss": loss}
