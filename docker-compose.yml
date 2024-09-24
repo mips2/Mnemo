@@ -18,6 +18,7 @@ services:
       - db
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db/postgres
+      SECRET_KEY: "your-very-secure-secret-key"  # Ensure this matches auth.py
     ports:
       - "8000:8000"
     volumes:
