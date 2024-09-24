@@ -1,7 +1,7 @@
 // frontend/src/components/Register.js
 import React, { useState } from 'react';
 import api from '../api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 function Register() {
     const [email, setEmail] = useState('');
@@ -16,7 +16,7 @@ function Register() {
             alert("Registration successful. Please login.");
             navigate('/login');
         } catch (error) {
-            alert("Registration failed: " + error.response.data.detail);
+            alert("Registration failed: " + (error.response?.data?.detail || "An error occurred"));
         }
     }
 
@@ -40,7 +40,7 @@ function Register() {
                 /><br />
                 <button type="submit">Register</button>
             </form>
-            <p>Already have an account? <a href="/login">Login</a></p>
+            <p>Already have an account? <Link to="/login">Login</Link></p>
         </div>
     );
 }

@@ -1,7 +1,6 @@
-// frontend/src/components/Login.js
 import React, { useState } from 'react';
 import api from '../api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 function Login() {
     const [email, setEmail] = useState('');
@@ -19,7 +18,7 @@ function Login() {
             localStorage.setItem('token', response.data.access_token);
             navigate('/');
         } catch (error) {
-            alert("Login failed: " + error.response.data.detail);
+            alert("Login failed: " + (error.response?.data?.detail || "An error occurred"));
         }
     }
 
@@ -43,7 +42,7 @@ function Login() {
                 /><br />
                 <button type="submit">Login</button>
             </form>
-            <p>Don't have an account? <a href="/register">Register</a></p>
+            <p>Don't have an account? <Link to="/register">Register</Link></p>
         </div>
     );
 }
