@@ -1,19 +1,19 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
-from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
 from .database import create_db_and_tables, get_session
-from .models import User, Feedback
+from .models import User, Feedback, ChatHistory
 from .auth import (
     authenticate_user,
     create_access_token,
     get_current_user,
     get_password_hash,
+    login_for_access_token
 )
 from .memory import MemoryStore
-from .active_learning import ActiveLearner
+from .ai_model import generate_response, fine_tune_model
 
 from pydantic import BaseModel
 
@@ -50,14 +50,6 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 def on_startup():
     create_db_and_tables()
 
-# Initialize model and tokenizer globally to avoid reloading
-MODEL_NAME = "distilgpt2"
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
-model.eval()
-
-active_learner = ActiveLearner(model, tokenizer)
-
 # Pydantic models for requests
 class UserCreate(BaseModel):
     email: str
@@ -65,7 +57,7 @@ class UserCreate(BaseModel):
 
 class FeedbackData(BaseModel):
     user_input: str
-    model_reply: str  # Changed from model_response to model_reply
+    ai_response: str
     corrected_response: str
 
 # User Registration
@@ -82,44 +74,58 @@ def register(user: UserCreate, session: Session = Depends(get_session)):
     return {"msg": "User created successfully"}
 
 # User Login
-@app.post("/login", summary="Login and get access token")
-def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
-    user = authenticate_user(form_data.username, form_data.password, session)
-    if not user:
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+@app.post("/login")
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
+    return await login_for_access_token(form_data, session)
 
 # Generate Response Endpoint
 @app.post("/generate", summary="Generate response from the model")
 @limiter.limit("10/minute")
-def generate(request: Request, query: FeedbackData, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+def generate(request: Request, query: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     try:
+        user_input = query.get("user_input")
+        if not user_input:
+            raise HTTPException(status_code=400, detail="User input is required")
+
         memory_store = MemoryStore(session, current_user)
-        memory = memory_store.retrieve_memory(query.user_input)
-        memory_context = " ".join(memory)
-        augmented_input = f"Context: {memory_context}\nUser: {query.user_input}\nAssistant:"
+        ai_response = generate_response(user_input, memory_store, current_user, session)
 
-        inputs = tokenizer.encode(augmented_input, return_tensors='pt')
-        outputs = model.generate(
-            inputs,
-            max_length=150,
-            pad_token_id=tokenizer.eos_token_id,
-            no_repeat_ngram_size=2,
-            temperature=0.7,
-            top_p=0.9,
-            do_sample=True,
-        )
-        response = tokenizer.decode(outputs[0], skip_special_tokens=True, clean_up_tokenization_spaces=False)
-        assistant_reply = response.split("Assistant:")[-1].strip()
+        # Save chat history
+        chat_history = ChatHistory(user_id=current_user.id, user_input=user_input, ai_response=ai_response)
+        session.add(chat_history)
+        session.commit()
 
-        # Update memory
-        memory_store.add_to_memory(query.user_input)
-        memory_store.add_to_memory(assistant_reply)
-
-        return {"response": assistant_reply}
+        return {"response": ai_response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Chat History Endpoint
+@app.get("/chat-history")
+async def get_chat_history(current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    statement = select(ChatHistory).where(ChatHistory.user_id == current_user.id).order_by(ChatHistory.timestamp)
+    chat_history = session.exec(statement).all()
+    return chat_history
+
+# Feedback Endpoint
+@app.post("/feedback")
+async def submit_feedback(request: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    user_input = request.get("user_input")
+    ai_response = request.get("ai_response")
+    corrected_response = request.get("corrected_response")
+    
+    if not all([user_input, ai_response, corrected_response]):
+        raise HTTPException(status_code=400, detail="All fields are required")
+    
+    feedback = Feedback(
+        user_id=current_user.id,
+        user_input=user_input,
+        ai_response=ai_response,
+        corrected_response=corrected_response
+    )
+    session.add(feedback)
+    session.commit()
+    
+    # Fine-tune the model
+    loss = fine_tune_model(user_input, corrected_response)
+    
+    return {"message": "Feedback submitted and model fine-tuned successfully", "loss": loss}

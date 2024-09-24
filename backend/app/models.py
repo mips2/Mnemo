@@ -1,5 +1,6 @@
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
+from datetime import datetime
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -18,6 +19,14 @@ class Feedback(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
     user_input: str
-    model_reply: str  # Changed from model_response to model_reply
+    ai_response: str  # Changed from model_reply to ai_response
     corrected_response: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
     user: Optional[User] = Relationship(back_populates="feedbacks")
+
+class ChatHistory(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    user_input: str
+    ai_response: str  # Changed from model_response to ai_response
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
