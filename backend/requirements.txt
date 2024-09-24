@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+transformers
+torch
+faiss-cpu
+sentence-transformers
+pydantic
+sqlalchemy
+asyncpg
+python-jose[cryptography]  # For JWT authentication
+passlib[bcrypt]  # For password hashing
