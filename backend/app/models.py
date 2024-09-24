@@ -1,4 +1,3 @@
-# backend/app/models.py
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
 
@@ -19,6 +18,6 @@ class Feedback(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id")
     user_input: str
-    model_response: str
+    model_reply: str  # Changed from model_response to model_reply
     corrected_response: str
     user: Optional[User] = Relationship(back_populates="feedbacks")

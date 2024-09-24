@@ -5,23 +5,22 @@ import { useNavigate, Link } from 'react-router-dom';
 function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
 
     const navigate = useNavigate();
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        setLoading(true);
-        setError('');
         try {
-            await api.post('/login', { email, password });
-            alert("Login successful.");
-            navigate('/');
+            const response = await api.post('/login', {
+                username: email,
+                password: password
+            });
+            // Store the token in localStorage
+            localStorage.setItem('token', response.data.access_token);
+            // Navigate to the chat page after successful login
+            navigate('/chat');
         } catch (error) {
-            setError(error.response?.data?.detail || "Login failed. Please try again.");
-        } finally {
-            setLoading(false);
+            alert("Login failed: " + (error.response?.data?.detail || "An error occurred"));
         }
     }
 
@@ -43,11 +42,8 @@ function Login() {
                     onChange={e => setPassword(e.target.value)}
                     required
                 /><br />
-                <button type="submit" disabled={loading}>
-                    {loading ? 'Logging in...' : 'Login'}
-                </button>
+                <button type="submit">Login</button>
             </form>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
             <p>Don't have an account? <Link to="/register">Register</Link></p>
         </div>
     );

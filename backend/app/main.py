@@ -1,5 +1,4 @@
-# backend/app/main.py
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -31,7 +30,6 @@ app = FastAPI(title="Dynamic Memory Transformer with Active Learning")
 # CORS Configuration
 origins = [
     "http://localhost:3000",  # React frontend
-    # Add other origins as needed
 ]
 
 app.add_middleware(
@@ -53,7 +51,7 @@ def on_startup():
     create_db_and_tables()
 
 # Initialize model and tokenizer globally to avoid reloading
-MODEL_NAME = "distilgpt2"  # Replace with LLaMA or desired model
+MODEL_NAME = "distilgpt2"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
 model.eval()
@@ -67,7 +65,7 @@ class UserCreate(BaseModel):
 
 class FeedbackData(BaseModel):
     user_input: str
-    model_response: str
+    model_reply: str  # Changed from model_response to model_reply
     corrected_response: str
 
 # User Registration
@@ -98,7 +96,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), session: Session = D
 # Generate Response Endpoint
 @app.post("/generate", summary="Generate response from the model")
 @limiter.limit("10/minute")
-def generate(query: FeedbackData, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+def generate(request: Request, query: FeedbackData, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     try:
         memory_store = MemoryStore(session, current_user)
         memory = memory_store.retrieve_memory(query.user_input)
@@ -115,7 +113,7 @@ def generate(query: FeedbackData, current_user: User = Depends(get_current_user)
             top_p=0.9,
             do_sample=True,
         )
-        response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        response = tokenizer.decode(outputs[0], skip_special_tokens=True, clean_up_tokenization_spaces=False)
         assistant_reply = response.split("Assistant:")[-1].strip()
 
         # Update memory
@@ -123,40 +121,5 @@ def generate(query: FeedbackData, current_user: User = Depends(get_current_user)
         memory_store.add_to_memory(assistant_reply)
 
         return {"response": assistant_reply}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Feedback Endpoint
-@app.post("/feedback", summary="Provide feedback to improve the model")
-@limiter.limit("5/minute")
-def feedback(feedback_data: FeedbackData, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    try:
-        memory_store = MemoryStore(session, current_user)
-        combined_input = f"Context: {' '.join(memory_store.retrieve_memory(feedback_data.user_input))}\nUser: {feedback_data.user_input}\nAssistant:"
-
-        inputs = tokenizer.encode(combined_input, return_tensors='pt')
-        uncertainty = active_learner.measure_uncertainty(inputs)
-
-        threshold = 1.0  # Adjust based on experimentation
-        if uncertainty > threshold:
-            corrected_response = feedback_data.corrected_response
-            input_ids = tokenizer.encode(combined_input, return_tensors='pt')
-            labels = tokenizer.encode(f"Assistant: {corrected_response}", return_tensors='pt')
-
-            loss = active_learner.fine_tune(input_ids, labels)
-
-            # Store feedback
-            feedback_entry = Feedback(
-                user_id=current_user.id,
-                user_input=feedback_data.user_input,
-                model_response=feedback_data.model_response,
-                corrected_response=corrected_response
-            )
-            session.add(feedback_entry)
-            session.commit()
-
-            return {"status": "Model fine-tuned", "loss": loss}
-        else:
-            return {"status": "No fine-tuning needed"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

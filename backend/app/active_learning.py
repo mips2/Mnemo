@@ -1,7 +1,5 @@
-# backend/app/active_learning.py
-import torch
+from torch.optim import AdamW  # Switch to PyTorch AdamW
 import torch.nn.functional as F
-from transformers import AdamW
 
 class ActiveLearner:
     def __init__(self, model, tokenizer):

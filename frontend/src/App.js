@@ -1,4 +1,3 @@
-// frontend/src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Chat from './components/Chat';
@@ -12,8 +11,9 @@ function App() {
         <Router>
             <Routes>
                 <Route path="/" element={isAuthenticated ? <Chat /> : <Navigate to="/login" />} />
-                <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
-                <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/" />} />
+                <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/chat" />} />
+                <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/chat" />} />
+                <Route path="/chat" element={isAuthenticated ? <Chat /> : <Navigate to="/login" />} />
             </Routes>
         </Router>
     );
