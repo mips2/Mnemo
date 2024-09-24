@@ -12,3 +12,4 @@ sqlalchemy
 alembic
 fastapi-utils
 slowapi
+psycopg2-binary
